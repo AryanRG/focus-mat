@@ -2,9 +2,10 @@
 Usage: python3 build.py   -> writes theme.json (the installable theme file) and theme.css next to this file.
 Needs Pillow. Set FM_MOCK to a folder holding index.html and empty.html test pages to also write test copies.
 """
-import base64, json, os, re
+import base64, json, os, re, sys
 
 OUT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, OUT)   # quotes.py and squeeze.py sit next to this file
 MOCK = os.environ.get('FM_MOCK', '')   # optional: test pages are only written when this folder exists
 
 # ---------------------------------------------------------------- colour roles
@@ -121,36 +122,16 @@ ORIGIN = _pct(50.0 / CELLS)
 def _y(v):   # a vertical shift given in percent of one cell
     return _pct(v / CELLS)
 
-QUOTES = [
-    (['Let the noise settle like silt', 'in still water.'], ['What remains is the one thing in front', 'of you, and it was always enough.']),
-    (['The river does not hurry,', 'and still it arrives.'], ['Let the work move', 'at the speed of attention.']),
-    (['Nothing is lost by going slowly.'], ['What you tend with a quiet mind', 'takes its own shape.']),
-]
-Q_HOLD = int(os.environ.get('FM_QHOLD', '240'))   # seconds each one stays
-Q_FADE = 1.5
-Q_W, Q_LH, Q_GAP = 260, 20.5, 9.0
-Q_H = int(max(len(a) + len(b) for a, b in QUOTES) * Q_LH + Q_GAP + 6)
-def _quotes_svg():
-    ids = 'abcdef'
-    out = [f"<svg {NS} width='{Q_W}' height='{Q_H}' font-family='Iowan Old Style,Palatino Linotype,Palatino,Georgia,serif' font-size='13.5' fill='#d9ceb8'>"]
-    for k, (p1, p2) in enumerate(QUOTES):
-        i_in, i_out = ids[2 * k], ids[2 * k + 1]
-        prev_out = ids[(2 * k - 1) % 6]
-        begin_in = ('0s;' if k == 0 else '') + prev_out + '.end'
-        out.append("<g opacity='0'>")
-        out.append(f"<animate id='{i_in}' attributeName='opacity' from='0' to='1' dur='{Q_FADE}s' begin='{begin_in}' fill='freeze'/>")
-        out.append(f"<animate id='{i_out}' attributeName='opacity' from='1' to='0' dur='{Q_FADE}s' begin='{i_in}.end+{Q_HOLD}s' fill='freeze'/>")
-        y = 13.0
-        out.append('<text>')
-        for ln in p1:
-            out.append(f"<tspan x='0' y='{y:g}'>{ln}</tspan>"); y += Q_LH
-        y += Q_GAP
-        for ln in p2:
-            out.append(f"<tspan x='0' y='{y:g}'>{ln}</tspan>"); y += Q_LH
-        out.append('</text></g>')
-    out.append('</svg>')
-    return uri(''.join(out))
-QSVG = _quotes_svg()
+# Calm quotes that rotate under "Stay Focused.". The texts live in quotes.json; quotes.py turns them into one
+# small animated picture. Only as many as fit the css limit are used (see main()).
+import quotes as _quotes
+QUOTES = [tuple(x) for x in json.load(open(os.path.join(OUT, 'quotes.json')))]
+Q_HOLD = int(os.environ.get('FM_QHOLD', '120'))   # seconds each one stays
+Q_W = 260
+Q_H = _quotes.slot_height()
+QSVG = '@@QUOTES@@'                                # filled in by main()
+LIMIT = int(os.environ.get('FM_LIMIT', '20000'))   # T3 Code's limit on theme css (50000 from the mid November 2026 builds)
+Q_COUNTS = [36, 32, 30, 27, 25, 24, 20, 18, 16, 15, 12, 10, 9, 8, 6, 5, 4, 3]   # counts the picture can cycle cheaply
 
 CSS = f"""
 html[data-theme-id]{{--fm-serif:Constantia,"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;--fm-line:rgba(255,255,255,.1);--fm-q:{QSVG};--fm-g:{GRAIN}}}
@@ -188,7 +169,7 @@ html[data-theme-id] :is(.chat-markdown,.composer-tiptap) .chat-markdown-codebloc
 span[class*="app-theme-message-action,var(--color-emerald"]{{color:#fda4af}}
 [data-user-message-bubble].bg-message{{border:1px solid rgba(238,232,220,.1);background:var(--fm-g),linear-gradient(180deg,rgba(255,255,255,.035),transparent 40%),rgba(7,7,6,.16);backdrop-filter:blur(16px) saturate(1.08)}}
 [data-thread-details-card]{{background:var(--fm-g),linear-gradient(180deg,rgba(255,255,255,.035),transparent 40%),rgba(7,7,6,.36)}}
-[data-slot="composer-shell"]{{anchor-scope:--fm-m;--glass-opacity:20%;--chat-composer-glass-surface:#070706;--chat-composer-highlight:transparent;--chat-composer-outline:rgba(238,232,220,.1)}}
+[data-slot="composer-shell"]{{anchor-scope:--fm-m;anchor-name:--fm-s;--glass-opacity:20%;--chat-composer-glass-surface:#070706;--chat-composer-highlight:transparent;--chat-composer-outline:rgba(238,232,220,.1)}}
 [data-slot="composer-shell"]::before{{background-image:var(--fm-g),linear-gradient(180deg,rgba(255,255,255,.035),transparent 40%)}}
 [data-chat-composer-main-surface]{{anchor-name:--fm-m}}
 [data-slot="composer-shell"]:is([data-context-row],:has([data-composer-banner-surface=attached]))::before{{display:block;top:anchor(--fm-m top,0px)}}
@@ -205,17 +186,20 @@ pre :is([style*="d568ea" i],[style*="213, 104, 234"]){{color:#d6a06c!important}}
 [data-pierre-icon]:is([data-icon-token=astro],[data-icon-token=database],[data-icon-token=vite]){{color:#d6a06c!important}}
 file-tree-container{{--trees-icon-indigo:#c9b48f;--trees-icon-purple:#d6a06c}}
 [role=switch][data-unchecked]{{background-color:#6a6864}}
-[data-chat-canvas]:has(>[data-chat-composer-overlay].inset-0) [data-timeline-loading]::after{{content:"Stay Focused.";position:absolute;right:7%;bottom:calc(11% + {Q_H + 14}px);font:400 clamp(28px,3.4vw,46px)/1 var(--fm-serif);color:#e2d7c1;opacity:.9;pointer-events:none}}
-[data-chat-canvas]:has(>[data-chat-composer-overlay].inset-0) [data-timeline-loading]::before{{content:var(--fm-q);position:absolute;right:7%;bottom:11%;width:{Q_W}px;height:{Q_H}px;opacity:.7;pointer-events:none}}
 [data-slot="sidebar"][data-mobile="true"]{{background-color:#070706}}
-[data-chat-canvas]{{anchor-scope:--fm-c,--fm-d;anchor-name:--fm-c}}
-[data-thread-details-panel="inline"][data-density="full"]{{anchor-name:--fm-d}}
-[data-thread-details-panel="inline"][data-density="full"]::before{{content:"Stay Focused.";position:fixed;position-anchor:--fm-d;position-visibility:no-overflow;align-self:end;left:calc(anchor(left) + 14px);top:calc(anchor(bottom) + 28px);bottom:calc(anchor(--fm-c bottom) + {Q_H + 38}px);height:24px;font:400 24px/1 var(--fm-serif);color:#e2d7c1;opacity:.85;white-space:nowrap;pointer-events:none}}
-[data-thread-details-panel="inline"][data-density="full"]::after{{content:var(--fm-q);position:fixed;position-anchor:--fm-d;position-visibility:no-overflow;align-self:end;left:calc(anchor(left) + 14px);top:calc(anchor(bottom) + 66px);bottom:calc(anchor(--fm-c bottom) + 24px);width:{Q_W}px;height:{Q_H}px;opacity:.68;pointer-events:none}}
-@media (max-height:47rem){{[data-timeline-loading]::before,[data-timeline-loading]::after{{display:none}}}}
-[data-chat-column]:has([data-thread-details-panel="inline"]) [data-timeline-loading]::before,[data-chat-column]:has([data-thread-details-panel="inline"]) [data-timeline-loading]::after{{display:none}}
-[data-chat-canvas]>div.inset-0:not([data-workspace-area])~[data-thread-details-panel]::before,[data-chat-canvas]>div.inset-0:not([data-workspace-area])~[data-thread-details-panel]::after{{display:none}}
-@media (max-height:46rem){{[data-thread-details-panel]::before,[data-thread-details-panel]::after{{display:none}}}}
+[data-chat-canvas]{{anchor-scope:--fm-c,--fm-d,--fm-s;anchor-name:--fm-c}}
+aside[data-density=full]{{anchor-name:--fm-d}}
+aside[data-density=full]::before,aside[data-density=full]::after,[data-chat-composer-overlay].inset-0::before,[data-chat-composer-overlay].inset-0::after{{position:fixed;position-visibility:no-overflow;justify-self:center;pointer-events:none}}
+aside[data-density=full]::before,[data-chat-composer-overlay].inset-0::before{{content:"Stay Focused.";font:400 24px/1 var(--fm-serif);height:1em;color:#e2d7c1;opacity:.85;white-space:nowrap}}
+aside[data-density=full]::after,[data-chat-composer-overlay].inset-0::after{{content:var(--fm-q);width:{Q_W}px;height:{Q_H}px;opacity:.7}}
+aside[data-density=full]::before,aside[data-density=full]::after{{left:anchor(--fm-s right);right:anchor(--fm-c right);align-self:end}}
+aside[data-density=full]::before{{top:calc(anchor(--fm-d bottom) + 28px);bottom:calc(anchor(--fm-c bottom) + {Q_H + 38}px)}}
+aside[data-density=full]::after{{top:calc(anchor(--fm-d bottom) + 66px);bottom:calc(anchor(--fm-c bottom) + 24px)}}
+[data-chat-composer-overlay].inset-0::before,[data-chat-composer-overlay].inset-0::after{{left:anchor(--fm-s left);right:anchor(--fm-s right);align-self:center}}
+[data-chat-composer-overlay].inset-0::before{{font-size:clamp(28px,3.4vw,46px);top:calc(anchor(--fm-s bottom) + 34px);bottom:calc(anchor(--fm-c bottom) + {Q_H + 30}px)}}
+[data-chat-composer-overlay].inset-0::after{{top:calc(anchor(--fm-s bottom) + 48px + clamp(28px,3.4vw,46px));bottom:calc(anchor(--fm-c bottom) + 16px)}}
+.z-20.inset-0~[data-thread-details-panel]::before,.z-20.inset-0~[data-thread-details-panel]::after{{display:none}}
+[data-user-message-bubble].p-3{{padding:9px 17px 12px}}
 """
 
 MOCKFIX = '[data-slot="scroll-area"]{max-height:calc(100vh - 134px - 84px - 30px)!important;overflow:hidden!important}'
@@ -230,14 +214,28 @@ def var_name(role):
     return '--app-theme-' + re.sub(r'([A-Z])', lambda m: '-' + m.group(1).lower(), role)
 
 def main():
-    css = minify(CSS) + open(os.path.join(OUT, 'clawd-set.css')).read()   # layout rules adapted from T3 Clawd (MIT), see CREDITS.md
+    from squeeze import squeeze
+    extra = open(os.path.join(OUT, 'clawd-set.css')).read()      # layout rules adapted from T3 Clawd (MIT), see CREDITS.md
+    extra += open(os.path.join(OUT, 'surfaces.css')).read()      # menus, popups, tooltips and dialogs in the same frosted look
+    extra += _quotes.KEEPER_CSS                                  # keeps the quote picture's clock running between screens
+    if LIMIT > 20000:                                            # room to spare: hide the new chat words while a notice banner shows
+        extra += '[data-chat-composer-overlay]:has([data-composer-banner-stack])::before,[data-chat-composer-overlay]:has([data-composer-banner-stack])::after{display:none}'
+    want = int(os.environ.get('FM_QUOTES', '0'))
+    for n in ([want] if want else [c for c in Q_COUNTS if c <= len(QUOTES)]):
+        pic, h = _quotes.quotes_svg(QUOTES[:n], hold_seconds=Q_HOLD, width=Q_W)
+        assert h == Q_H
+        css = squeeze(minify(CSS).replace('@@QUOTES@@', pic) + extra)
+        if len(css) <= LIMIT:
+            break
+    print('quotes used', n, 'of', len(QUOTES))
     theme = {"version": 1, "name": "Focus Mat", "appearance": "dark", "canvas": COLORS['canvas'],
              "accent": COLORS['accent'], "colors": COLORS, "css": css}
     open(os.path.join(OUT, 'theme.css'), 'w').write(css)
     js = json.dumps(theme, indent=2)
     open(os.path.join(OUT, 'theme.json'), 'w').write(js)
-    print('css chars', len(css), '/ 20000 | json bytes', len(js.encode()), '/ 32768')
-    assert len(css) <= 20000 and len(js.encode()) <= 32768
+    cap = 32768 if LIMIT <= 20000 else 6 * LIMIT + 16384   # the app's cap on the whole theme file
+    print('css chars', len(css), '/', LIMIT, '| json bytes', len(js.encode()), '/', cap)
+    assert len(css) <= LIMIT and len(js.encode()) <= cap
     if not os.path.isdir(MOCK):
         return
     vars_css = 'html[data-theme-id]{' + ';'.join(f'{var_name(k)}:{v}' for k, v in COLORS.items()) + '}'

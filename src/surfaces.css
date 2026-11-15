@@ -1,0 +1,1 @@
+.dropdown-glass{--popover:#0a0a0ab8}:is(.dropdown-glass,.dialog-glass){--accent:#ffffff17;background-image:var(--fm-g),linear-gradient(180deg,rgba(255,255,255,.035),transparent 40%)}[data-slot=tooltip-popup]{--popover:#0a0a0ab8;border-color:rgba(238,232,220,.1);backdrop-filter:blur(16px)}[data-slot$=dialog-footer].bg-muted\/72{background-color:rgba(255,255,255,.025)}
