@@ -10,7 +10,7 @@ These stills, and the background pictures built from them inside `focus-mat.json
 
 ## T3 Clawd
 
-The two-line thread rows, the timer in place of the word "Working", the New thread row under Search, the one-column model picker and the effort bar in `src/clawd-set.css` are adapted from T3 Clawd by rohit3a (https://github.com/rohit3a/t3-clawd), which is under the MIT license. The rules were rewritten to fit this theme's colours and shapes. Its license notice follows.
+The two-line thread rows, the timer in place of the word "Working", the New thread row under Search, the one-column model picker and the effort bar in `src/clawd-set.css`, the section headers, thinner icons and amber Settle button in `src/sidebar-more.css`, and the project rows, palette footer, chat link and favourites star rules in `src/pickers-more.css` are adapted from T3 Clawd by rohit3a (https://github.com/rohit3a/t3-clawd), which is under the MIT license. The rules were rewritten to fit this theme's colours and shapes. Its license notice follows.
 
 ```
 MIT License

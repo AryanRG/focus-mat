@@ -9,6 +9,11 @@ sys.path.insert(0, OUT)   # quotes.py and squeeze.py sit next to this file
 MOCK = os.environ.get('FM_MOCK', '')   # optional: test pages are only written when this folder exists
 
 # ---------------------------------------------------------------- colour roles
+# One shared fill for every see-through panel: sidebar, message bubble, composer and details card.
+PANEL_A = float(os.environ.get('FM_PANEL', '0.6'))
+PANEL = 'rgba(10,10,10,' + ('%.2f' % PANEL_A).lstrip('0').rstrip('0') + ')'
+PANEL_HEX = '%02x' % round(PANEL_A * 255)
+PANEL_PCT = round(PANEL_A * 100)
 COLORS = {
     "canvas": "#090909", "chrome": "#070707",
     "toolbar": "#090909", "toolbarForeground": "#d9ceb8", "toolbarBorder": "#3c3b39",
@@ -17,7 +22,7 @@ COLORS = {
     "text": "#d9ceb8", "textMuted": "#a39a89", "border": "#3c3b39", "input": "#4b4a47",
     "focus": "#d6a06c", "accent": "#d6a06c", "accentForeground": "#17100a",
     "secondary": "#272625", "secondaryForeground": "#d9ceb8",
-    "muted": "#1a1a19", "mutedForeground": "#a39a89", "placeholder": "#9a9281",
+    "muted": "#1a1a19", "mutedForeground": "#a39a89", "placeholder": "#a39a89",
     "secondaryLabel": "#b5ab98", "iconMuted": "#958c7d",
     "error": "#fb5a63", "errorForeground": "#ff8a90", "errorSurface": "#2a1016",
     "warning": "#fea31a", "warningForeground": "#ffc266", "warningSurface": "#2a1d0a",
@@ -28,7 +33,7 @@ COLORS = {
     "codeBackground": "#0b0b0ad9", "codeForeground": "#d0c5b0",
     "searchMatchBackground": "#8a5a32", "searchMatchForeground": "#f6eedd",
     "searchMatchActiveBackground": "#dba565", "searchMatchActiveForeground": "#17100a",
-    "sidebar": "#0a0a0a99", "sidebarForeground": "#d3c8b2", "sidebarMutedForeground": "#aaa08e",
+    "sidebar": "#0a0a0a" + PANEL_HEX, "sidebarForeground": "#d3c8b2", "sidebarMutedForeground": "#aaa08e",
     "sidebarControlSurface": "#ffffff0d", "sidebarRowHover": "#ffffff0d",
     "sidebarRowActive": "#ffffff17", "sidebarRowSelected": "#ffffff10", "sidebarBorder": "#3c3b39",
     "terminalBackground": "#090909", "terminalForeground": "#d0c5b0", "terminalCursor": "#e0c9a0",
@@ -60,7 +65,7 @@ CORNER = b64(f"""<svg {NS} width='2400' height='2400' fill='none' stroke='#c9c0a
 </svg>""")
 SCRIM = 'linear-gradient(rgba(5,5,4,.24),rgba(5,5,4,.24)),linear-gradient(90deg,rgba(5,5,4,.16),rgba(5,5,4,.56) 24%,rgba(5,5,4,.56) 76%,rgba(5,5,4,.16))'
 
-# Frames of the wallpaper's own shader (Universe palette, wallpaper settings: frequency 1, brightness 0.95).
+# Frames of the wallpaper's own shader (Universe palette), rendered zoomed out so several patches of each colour fit a window.
 # Each background layer holds its frames stacked in one tall picture and jumps between them with a
 # stepped transform, so the whole effect is transform and opacity only (runs on the compositor).
 FIELD = os.environ.get('FM_FIELD') or os.path.join(OUT, 'frames')
@@ -74,9 +79,14 @@ NPOS = 2 * (FRAME_N - 1)      # z0..z16 and back again
 LOOP = STEP * NPOS
 PURPLE_KEEP = float(os.environ.get('FM_PURPLE', '0.85'))   # how much of the purple's brightness survives
 WARM_GAIN = float(os.environ.get('FM_WARM', '0.81'))       # the orange band is kept, slightly lifted
-PURPLE_LO = float(os.environ.get('FM_PLO', '0.55'))
+PURPLE_LO = float(os.environ.get('FM_PLO', '0.45'))
 PURPLE_HI = float(os.environ.get('FM_PHI', '1.0'))
 WARM_SHIFT = 0.32                                           # blue taken out of the warm band so it reads orange, not pink
+INDIGO = float(os.environ.get('FM_INDIGO', '1'))              # how far a purple patch is turned toward indigo blue
+INDIGO_PK = float(os.environ.get('FM_INDIGO_PK', '0'))        # 0 = the whole patch turns indigo; a value such as 3 leaves its peak violet
+INDIGO_G = float(os.environ.get('FM_INDIGO_G', '0.1'))     # a touch of green added with it, so the blue is not electric
+EDGE_FADE = float(os.environ.get('FM_DS', '2'))             # higher = only the peaks of a purple patch keep colour, the rest goes grey
+SPRITE_Q = int(os.environ.get('FM_Q', '80'))                 # WebP quality of the two background pictures; lower values wash the colour out of small patches
 def _grade(im):
     """Darken by hue: purple and dim areas go most of the way to black, the warm band stays."""
     px = []
@@ -87,7 +97,9 @@ def _grade(im):
         kp = PURPLE_KEEP * t * t * (3 - 2 * t)        # purple under the threshold is black; only its peaks stay
         k = kp + (WARM_GAIN - kp) * w
         rr, gg, bb = r * k, g * k, b * k * (1 - WARM_SHIFT * w)
-        ds = (1 - w) * (1 - t ** float(os.environ.get('FM_DS', '6')))                 # the dim edge of a purple blob loses its colour, so no purple cast is left on the black
+        h = INDIGO * (1 - w) * (1 - t ** INDIGO_PK if INDIGO_PK else 1)           # red taken out of the patch body, a little green put in: violet becomes indigo blue
+        rr, gg = rr * (1 - h), gg + INDIGO_G * h * bb
+        ds = (1 - w) * (1 - t ** EDGE_FADE)           # the dim edge of a purple blob loses its colour, so no purple cast is left on the black
         y = 0.3 * rr + 0.4 * gg + 0.3 * bb
         rr, gg, bb = rr + (y - rr) * ds, gg + (y - gg) * ds, bb + (y - bb) * ds
         px.append((min(255, int(rr + .5)), min(255, int(gg + .5)), min(255, int(bb + .5))))
@@ -98,7 +110,7 @@ def _sprite(ids):
     sp = Image.new('RGB', (CELL[0], CELL[1] * CELLS))
     for k, i in enumerate(ids):
         sp.paste(_grade(Image.open(os.path.join(FIELD, f'z{i}.png')).convert('RGB').resize(CELL, Image.LANCZOS)), (0, CELL[1] * k))
-    b = io.BytesIO(); sp.save(b, 'WEBP', quality=60, method=6)
+    b = io.BytesIO(); sp.save(b, 'WEBP', quality=SPRITE_Q, method=6)
     return 'url("data:image/webp;base64,' + base64.b64encode(b.getvalue()).decode() + '")'
 _even = list(range(0, FRAME_N, 2)); _odd = list(range(1, FRAME_N, 2))
 SB = _sprite(_even); SA = _sprite(_odd + [_odd[-1]] * (CELLS - len(_odd)))
@@ -130,7 +142,7 @@ Q_HOLD = int(os.environ.get('FM_QHOLD', '120'))   # seconds each one stays
 Q_W = 260
 Q_H = _quotes.slot_height()
 QSVG = '@@QUOTES@@'                                # filled in by main()
-LIMIT = int(os.environ.get('FM_LIMIT', '20000'))   # T3 Code's limit on theme css (50000 from the mid November 2026 builds)
+LIMIT = int(os.environ.get('FM_LIMIT', '50000'))   # T3 Code's limit on theme css (50000 from the mid November 2026 builds)
 Q_COUNTS = [36, 32, 30, 27, 25, 24, 20, 18, 16, 15, 12, 10, 9, 8, 6, 5, 4, 3]   # counts the picture can cycle cheaply
 
 CSS = f"""
@@ -167,9 +179,10 @@ html[data-theme-id] [data-chat-header]{{background-image:linear-gradient(90deg,t
 .chat-markdown :is(h1,h2,h3,h4,h5,h6){{font-weight:650;letter-spacing:-.01em}}
 html[data-theme-id] :is(.chat-markdown,.composer-tiptap) .chat-markdown-codeblock{{border-color:var(--fm-line)}}
 span[class*="app-theme-message-action,var(--color-emerald"]{{color:#fda4af}}
-[data-user-message-bubble].bg-message{{border:1px solid rgba(238,232,220,.1);background:var(--fm-g),linear-gradient(180deg,rgba(255,255,255,.035),transparent 40%),rgba(7,7,6,.16);backdrop-filter:blur(16px) saturate(1.08)}}
-[data-thread-details-card]{{background:var(--fm-g),linear-gradient(180deg,rgba(255,255,255,.035),transparent 40%),rgba(7,7,6,.36)}}
-[data-slot="composer-shell"]{{anchor-scope:--fm-m;anchor-name:--fm-s;--glass-opacity:20%;--chat-composer-glass-surface:#070706;--chat-composer-highlight:transparent;--chat-composer-outline:rgba(238,232,220,.1)}}
+[data-user-message-bubble].bg-message{{border:1px solid rgba(238,232,220,.1);background:var(--fm-g),linear-gradient(180deg,rgba(255,255,255,.035),transparent 40%),{PANEL}}}
+[data-thread-details-card]{{background:var(--fm-g),linear-gradient(180deg,rgba(255,255,255,.035),transparent 40%),{PANEL}}}
+[data-thread-details-panel=inline]>[data-thread-details-card]{{backdrop-filter:none}}
+[data-slot="composer-shell"]{{anchor-scope:--fm-m;anchor-name:--fm-s;--glass-opacity:{PANEL_PCT}%;--chat-composer-glass-surface:#0a0a0a;--chat-composer-highlight:transparent;--chat-composer-outline:rgba(238,232,220,.1)}}
 [data-slot="composer-shell"]::before{{background-image:var(--fm-g),linear-gradient(180deg,rgba(255,255,255,.035),transparent 40%)}}
 [data-chat-composer-main-surface]{{anchor-name:--fm-m}}
 [data-slot="composer-shell"]:is([data-context-row],:has([data-composer-banner-surface=attached]))::before{{display:block;top:anchor(--fm-m top,0px)}}
@@ -217,6 +230,9 @@ def main():
     from squeeze import squeeze
     extra = open(os.path.join(OUT, 'clawd-set.css')).read()      # layout rules adapted from T3 Clawd (MIT), see CREDITS.md
     extra += open(os.path.join(OUT, 'surfaces.css')).read()      # menus, popups, tooltips and dialogs in the same frosted look
+    extra += open(os.path.join(OUT, 'sidebar-more.css')).read()  # section headers with a Recents label, thinner sidebar icons, amber Settle (also adapted from T3 Clawd)
+    extra += open(os.path.join(OUT, 'pickers-more.css')).read()  # one line project rows, quieter palette footer, soft link underline, favourites star (also adapted from T3 Clawd)
+    extra += open(os.path.join(OUT, 'surfaces-more.css')).read().replace('@@PANEL@@', PANEL)   # right panel, settings window and pull requests page in the same look
     extra += _quotes.KEEPER_CSS                                  # keeps the quote picture's clock running between screens
     extra += '@media(prefers-reduced-motion:reduce){html[data-theme-id]{--fm-q:none}}'   # no quote rotation when reduced motion is asked for
     if LIMIT > 20000:                                            # room to spare: hide the new chat words while a notice banner shows
