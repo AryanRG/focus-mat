@@ -1,0 +1,5 @@
+src/theme.json
+src/theme.css
+src/test-*.html
+__pycache__/
+.DS_Store
