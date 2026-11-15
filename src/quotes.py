@@ -53,7 +53,7 @@ BAD = re.compile(r'[<>\\]|url\(|src\(|image-set\(|@import', re.I)
 
 # Rule that keeps one copy of the picture painted for the life of the page (zero size, invisible).
 # visibility:hidden does NOT work (the clock then drifts); width/height 0 alone does not hide it.
-KEEPER_CSS = 'html::after{content:var(--fm-q);position:fixed;left:0;top:0;width:0;height:0;overflow:hidden}'
+KEEPER_CSS = 'html::after{content:var(--fm-q)/"";position:fixed;left:0;top:0;width:0;height:0;overflow:hidden}'
 
 
 def slot_height(lines=LINES):

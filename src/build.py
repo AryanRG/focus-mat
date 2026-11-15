@@ -191,7 +191,7 @@ file-tree-container{{--trees-icon-indigo:#c9b48f;--trees-icon-purple:#d6a06c}}
 aside[data-density=full]{{anchor-name:--fm-d}}
 aside[data-density=full]::before,aside[data-density=full]::after,[data-chat-composer-overlay].inset-0::before,[data-chat-composer-overlay].inset-0::after{{position:fixed;position-visibility:no-overflow;justify-self:center;pointer-events:none}}
 aside[data-density=full]::before,[data-chat-composer-overlay].inset-0::before{{content:"Stay Focused.";font:400 24px/1 var(--fm-serif);height:1em;color:#e2d7c1;opacity:.85;white-space:nowrap}}
-aside[data-density=full]::after,[data-chat-composer-overlay].inset-0::after{{content:var(--fm-q);width:{Q_W}px;height:{Q_H}px;opacity:.7}}
+aside[data-density=full]::after,[data-chat-composer-overlay].inset-0::after{{content:var(--fm-q)/"";width:{Q_W}px;height:{Q_H}px;opacity:.8}}
 aside[data-density=full]::before,aside[data-density=full]::after{{left:anchor(--fm-s right);right:anchor(--fm-c right);align-self:end}}
 aside[data-density=full]::before{{top:calc(anchor(--fm-d bottom) + 28px);bottom:calc(anchor(--fm-c bottom) + {Q_H + 38}px)}}
 aside[data-density=full]::after{{top:calc(anchor(--fm-d bottom) + 66px);bottom:calc(anchor(--fm-c bottom) + 24px)}}
@@ -218,6 +218,7 @@ def main():
     extra = open(os.path.join(OUT, 'clawd-set.css')).read()      # layout rules adapted from T3 Clawd (MIT), see CREDITS.md
     extra += open(os.path.join(OUT, 'surfaces.css')).read()      # menus, popups, tooltips and dialogs in the same frosted look
     extra += _quotes.KEEPER_CSS                                  # keeps the quote picture's clock running between screens
+    extra += '@media(prefers-reduced-motion:reduce){html[data-theme-id]{--fm-q:none}}'   # no quote rotation when reduced motion is asked for
     if LIMIT > 20000:                                            # room to spare: hide the new chat words while a notice banner shows
         extra += '[data-chat-composer-overlay]:has([data-composer-banner-stack])::before,[data-chat-composer-overlay]:has([data-composer-banner-stack])::after{display:none}'
     want = int(os.environ.get('FM_QUOTES', '0'))

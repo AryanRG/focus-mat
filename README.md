@@ -6,7 +6,7 @@ A dark cutting mat theme for T3 Code, with a slow lava lamp background and the w
 
 ![Focus Mat on a new chat](docs/preview-new-chat.png)
 
-One theme file. No fork and no source changes. It is built on T3 Code's own theme system and uses about 19,850 of its 20,000 characters of style rules.
+One theme file. No fork and no source changes. It is built on T3 Code's own theme system and uses about 19,930 of its 20,000 characters of style rules.
 
 ## What it does
 
@@ -36,7 +36,7 @@ T3 Code raised its limit on theme css from 20,000 to 50,000 characters in mid No
 
 The background was built to be cheap. Each layer is one small picture holding nine frames, moved with stepped `transform` and `opacity` only, so the browser can run it without touching the page's main thread. It steps ten times a second, pauses while a dialog is open, and does not run when the system asks for reduced motion. Measured on a test page, the page does no repeated work while idle.
 
-The quotes are one small picture that changes with a short fade every two minutes and rests in between.
+The quotes are one small picture that changes with a short fade every two minutes and rests in between. They are hidden when the system asks for reduced motion.
 
 ## Build it yourself
 
